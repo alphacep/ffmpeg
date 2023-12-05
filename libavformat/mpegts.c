@@ -633,6 +633,11 @@ static int get_packet_size(AVFormatContext* s)
         av_log(s, AV_LOG_TRACE, "Probe: %d, score: %d, dvhs_score: %d, fec_score: %d \n",
             buf_size, score, dvhs_score, fec_score);
 
+#if 0
+        printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Probe: %d, score: %d, dvhs_score: %d, fec_score: %d \n",
+            buf_size, score, dvhs_score, fec_score);
+#endif
+
         margin = mid_pred(score, fec_score, dvhs_score);
 
         if (buf_size < PROBE_PACKET_MAX_BUF)
