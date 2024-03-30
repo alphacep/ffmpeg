@@ -23,12 +23,15 @@
 
 #include <stdarg.h>
 #include "avcodec.h"
+#include "ass_split.h"
+#include "ass.h"
 #include "libavutil/bprint.h"
 #include "codec_internal.h"
 
 
 typedef struct {
     AVCodecContext *avctx;
+    ASSSplitContext *ass_ctx;
 } DvbTxtContext;
 
 
@@ -36,29 +39,46 @@ static av_cold int dvbtxt_encode_init(AVCodecContext *avctx)
 {
     DvbTxtContext *s = avctx->priv_data;
     s->avctx = avctx;
-    return 0;
-}
-
-static int encode_frame(AVCodecContext *avctx,
-                        unsigned char *buf, int bufsize, const AVSubtitle *sub)
-{
-    return 0;
+    s->avctx = avctx;
+    s->ass_ctx = ff_ass_split(avctx->subtitle_header);
+    return s->ass_ctx ? 0 : AVERROR_INVALIDDATA;
 }
 
 static int dvbtxt_encode_frame(AVCodecContext *avctx,
                              unsigned char *buf, int bufsize, const AVSubtitle *sub)
 {
-    return encode_frame(avctx, buf, bufsize, sub);
+    DvbTxtContext *s = avctx->priv_data;
+    ASSDialog *dialog;
+    int i;
+
+    for (i = 0; i < sub->num_rects; i++) {
+        const char *ass = sub->rects[i]->ass;
+
+        if (sub->rects[i]->type != SUBTITLE_ASS) {
+            av_log(avctx, AV_LOG_ERROR, "Only SUBTITLE_ASS type supported.\n");
+            return AVERROR(EINVAL);
+        }
+
+        dialog = ff_ass_split_dialog(s->ass_ctx, ass);
+        if (!dialog)
+            return AVERROR(ENOMEM);
+        printf ("Encoding rec %d text %s\n", i, dialog->text);
+        ff_ass_free_dialog(&dialog);
+    }
+
+    return 0;
 }
 
 static int dvbtxt_encode_close(AVCodecContext *avctx)
 {
+    DvbTxtContext *s = avctx->priv_data;
+    ff_ass_split_free(s->ass_ctx);
     return 0;
 }
 
 const FFCodec ff_teletext_encoder = {
-    .p.name         = "teletextenc",
-    CODEC_LONG_NAME("Teletext Encoder"),
+    .p.name         = "dvbtxt",
+    CODEC_LONG_NAME("DVB Teletext Encoder"),
     .p.type         = AVMEDIA_TYPE_SUBTITLE,
     .p.id           = AV_CODEC_ID_DVB_TELETEXT,
     .priv_data_size = sizeof(DvbTxtContext),
