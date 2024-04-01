@@ -1567,7 +1567,6 @@ static int get_pes_stream_id(AVFormatContext *s, AVStream *st, int stream_id, in
     };
 
 
-
     // Static table to remove 8/4 Hamming code.
     const uint8_t UNHAM_8_4[256] = {
         0x01, 0xFF, 0x01, 0x01, 0xFF, 0x00, 0x01, 0xFF, 0xFF, 0x02, 0x01, 0xFF, 0x0A, 0xFF, 0xFF, 0x07,
@@ -1642,7 +1641,6 @@ uint32_t unham_24_18(uint32_t a)
         0x00, 0x01, 0x01, 0x00, 0x01, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x01, 0x00
     };
 
-
 const uint8_t G0[96] = {
         // Latin G0 Primary Set
         0x0020, 0x0021, 0x0022, 0x00A3, 0x0024, 0x0025, 0x0026, 0x0027, 0x0028, 0x0029, 0x002A, 0x002B, 0x002C, 0x002D, 0x002E, 0x002F,
@@ -1686,8 +1684,6 @@ uint8_t teletextToUcs2(uint8_t chr)
     }
 }
 
-static int glob_cnt = 0;
-
 uint8_t ucs2teletext(uint8_t chr);
 
 uint8_t ucs2teletext(uint8_t chr)
@@ -1699,7 +1695,6 @@ uint8_t ucs2teletext(uint8_t chr)
     }
     return r;
 }
-
 
 /* Add a PES header to the front of the payload, and segment into an integer
  * number of TS packets. The final TS packet is padded using an oversized
@@ -1722,20 +1717,21 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
     int force_sdt = 0;
     int force_nit = 0;
 
+    printf("###############################################\n");
     if (is_dvb_teletext) {
        int cur = 1;
        int cnt = 0;
        while (cur < payload_size) {
 
-#if 0
+#if 1
           printf("\nPayload before ");
           for (int i = 0; i < 44; i++) {
               printf ("%x ", payload[cur + 2 + i]);
           }
           printf("\n");
 #endif
-          cnt++;
-#if 0
+       cnt++;
+#if 1
           printf ("Teletext packet %d id(3) = %x size(2c) = %x\n", cnt, payload[cur], payload[cur + 1]);
 #endif
           int id = payload[cur];
@@ -1747,22 +1743,22 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
           memcpy(pkt, payload + cur, 44);
 
 
-#if 0
+#if 1
           printf("Teletext ");
 #endif
           for (int i = 0; i < 44; i++) {
               pkt[i] = REVERSE_8[pkt[i]];
-#if 0
+#if 1
               printf ("%x ", pkt[i]);
 #endif
       }
 
-#if 0
+#if 1
           printf ("\n");
 #endif
 
           {
-#if 0
+#if 1
             printf("Teletext ");
 #endif
             uint8_t address = (uint8_t)(unham_8_4(pkt[3]) << 4) | unham_8_4(pkt[2]);
@@ -1774,7 +1770,7 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
             uint8_t* data = pkt + 4;
             uint8_t designationCode = (y > 25) ? unham_8_4(data[0]) : 0x00;
 
-#if 0
+#if 1
             printf("m=%d address=%d y=%d code=%d", m, address, y, designationCode);
             printf("\n");
 #endif
@@ -1783,7 +1779,7 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
                 uint16_t pageNumber = (uint16_t)(((uint16_t)(m) << 8) | (uint16_t)((uint16_t)(unham_8_4(data[1])) << 4) | unham_8_4(data[0]));
                 uint8_t charset = ((unham_8_4(data[7]) & 0x08) | (unham_8_4(data[7]) & 0x04) | (unham_8_4(data[7]) & 0x02)) >> 1;
                 uint8_t mode = unham_8_4(data[7]) & 0x01;
-#if 0
+#if 1
                 printf("Teletext pageNumber=%d charset=%d mode=%d", pageNumber, charset, mode);
                 printf("\n");
 #endif
@@ -1791,7 +1787,7 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
 
             else if (y >= 1 && y <= 23) {
 
-#if 0
+#if 1
                 printf("\nText before ");
                 for (uint8_t i = 0; i < 40; i++)
                     printf("%x ", data[i]);
@@ -1801,6 +1797,7 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
                 printf("\n");
 #endif
 
+#if 0 // Modify
                 char new_text[100];
                 sprintf(new_text, "Hi dear! This is a test number %d", glob_cnt);
                 glob_cnt++;
@@ -1808,7 +1805,7 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
                     data[i + 4] = ucs2teletext((uint8_t)new_text[i]);
                 }
 
-#if 0
+#if 1
                 printf("\nText after ");
                 for (uint8_t i = 0; i < 40; i++)
                     printf("%x ", data[i]);
@@ -1821,11 +1818,13 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
                 for (uint8_t i = 0; i < 44; i++) {
                     payload[cur + i] = REVERSE_8[pkt[i]];
                 }
+#endif // Modify
+
             }
 
           }
 
-#if 0
+#if 1
           printf("\nPayload after ");
           for (int i = 0; i < 44; i++) {
               printf ("%x ", payload[cur + i]);
