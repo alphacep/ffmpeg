@@ -1701,7 +1701,7 @@ uint8_t ucs2teletext(uint8_t chr)
  * adaptation header to exactly fill the last TS packet.
  * NOTE: 'payload' contains a complete PES payload. */
 static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
-                             uint8_t *payload, int payload_size,
+                             const uint8_t *payload, int payload_size,
                              int64_t pts, int64_t dts, int key, int stream_id)
 {
     MpegTSWriteStream *ts_st = st->priv_data;
@@ -1717,23 +1717,20 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
     int force_sdt = 0;
     int force_nit = 0;
 
-    printf("###############################################\n");
+#if 1
     if (is_dvb_teletext) {
+       printf("###############################################\n");
        int cur = 1;
        int cnt = 0;
        while (cur < payload_size) {
 
-#if 1
-          printf("\nPayload before ");
+          printf("Payload: ");
           for (int i = 0; i < 44; i++) {
               printf ("%x ", payload[cur + 2 + i]);
           }
           printf("\n");
-#endif
-       cnt++;
-#if 1
+          cnt++;
           printf ("Teletext packet %d id(3) = %x size(2c) = %x\n", cnt, payload[cur], payload[cur + 1]);
-#endif
           int id = payload[cur];
           cur += 2;
 
@@ -1742,25 +1739,14 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
           uint8_t pkt[44];
           memcpy(pkt, payload + cur, 44);
 
-
-#if 1
           printf("Teletext ");
-#endif
           for (int i = 0; i < 44; i++) {
               pkt[i] = REVERSE_8[pkt[i]];
-#if 1
               printf ("%x ", pkt[i]);
-#endif
-      }
-
-#if 1
+          }
           printf ("\n");
-#endif
 
           {
-#if 1
-            printf("Teletext ");
-#endif
             uint8_t address = (uint8_t)(unham_8_4(pkt[3]) << 4) | unham_8_4(pkt[2]);
             uint8_t m = address & 0x07;
             if (m == 0) {
@@ -1769,72 +1755,32 @@ static void mpegts_write_pes(AVFormatContext *s, AVStream *st,
             uint8_t y = (address >> 3) & 0x1F;
             uint8_t* data = pkt + 4;
             uint8_t designationCode = (y > 25) ? unham_8_4(data[0]) : 0x00;
-
-#if 1
-            printf("m=%d address=%d y=%d code=%d", m, address, y, designationCode);
-            printf("\n");
-#endif
+            printf("Teletext m=%d address=%d y=%d code=%d\n", m, address, y, designationCode);
 
             if (y == 0) {
                 uint16_t pageNumber = (uint16_t)(((uint16_t)(m) << 8) | (uint16_t)((uint16_t)(unham_8_4(data[1])) << 4) | unham_8_4(data[0]));
                 uint8_t charset = ((unham_8_4(data[7]) & 0x08) | (unham_8_4(data[7]) & 0x04) | (unham_8_4(data[7]) & 0x02)) >> 1;
                 uint8_t mode = unham_8_4(data[7]) & 0x01;
-#if 1
-                printf("Teletext pageNumber=%d charset=%d mode=%d", pageNumber, charset, mode);
-                printf("\n");
-#endif
+                printf("Teletext pageNumber=%d charset=%d mode=%d\n", pageNumber, charset, mode);
             }
 
             else if (y >= 1 && y <= 23) {
 
-#if 1
-                printf("\nText before ");
+                printf("Bytes: ");
                 for (uint8_t i = 0; i < 40; i++)
                     printf("%x ", data[i]);
                 printf("\n");
+                printf("Text: ");
                 for (uint8_t i = 0; i < 40; i++)
                     printf("%c", teletextToUcs2(data[i]));
                 printf("\n");
-#endif
-
-#if 0 // Modify
-                char new_text[100];
-                sprintf(new_text, "Hi dear! This is a test number %d", glob_cnt);
-                glob_cnt++;
-                for (uint8_t i = 0; new_text[i] != 0 && i < 36; i++) {
-                    data[i + 4] = ucs2teletext((uint8_t)new_text[i]);
-                }
-
-#if 1
-                printf("\nText after ");
-                for (uint8_t i = 0; i < 40; i++)
-                    printf("%x ", data[i]);
-                printf("\n");
-                for (uint8_t i = 0; i < 40; i++)
-                    printf("%c", teletextToUcs2(data[i]));
-                printf("\n");
-#endif
-
-                for (uint8_t i = 0; i < 44; i++) {
-                    payload[cur + i] = REVERSE_8[pkt[i]];
-                }
-#endif // Modify
-
             }
 
           }
-
-#if 1
-          printf("\nPayload after ");
-          for (int i = 0; i < 44; i++) {
-              printf ("%x ", payload[cur + i]);
-          }
-          printf("\n");
-#endif
-
           cur += 44;
        }
     }
+#endif
 
     av_assert0(ts_st->payload != buf || st->codecpar->codec_type != AVMEDIA_TYPE_VIDEO);
     if (ts->flags & MPEGTS_FLAG_PAT_PMT_AT_FRAMES && st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
