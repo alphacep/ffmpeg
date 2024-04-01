@@ -965,6 +965,7 @@ static int64_t get_pcr(const MpegTSWrite *ts)
            ts->first_pcr;
 }
 
+#if FEC
 static int rs_init = 0;
 static uint8_t rs_x[256];    //polynomial division working buffer [x^254 x^253 x^252 ... x^16   x^15 ... x^2 x^1 x^0]
 static uint8_t rs_i2d[255];  //map index form [alpha^0 .. alpha^254] to symbols (decimal)
@@ -1019,7 +1020,7 @@ void rs255239_pdiv(void) {
         }
     }
 }
-
+#endif
 
 static void write_packet(AVFormatContext *s, const uint8_t *packet)
 {
@@ -1032,6 +1033,7 @@ static void write_packet(AVFormatContext *s, const uint8_t *packet)
                    sizeof(tp_extra_header));
     }
 
+#if FEC
     if (!rs_init) {
         rs255239_init();
         rs_init = 1;
@@ -1049,6 +1051,10 @@ static void write_packet(AVFormatContext *s, const uint8_t *packet)
 
     avio_write(s->pb, encpacket + 51, TS_MAX_PACKET_SIZE);
     ts->total_size += TS_MAX_PACKET_SIZE;
+#endif
+
+    avio_write(s->pb, packet, TS_PACKET_SIZE);
+    ts->total_size += TS_PACKET_SIZE;
 }
 
 static void section_write_packet(MpegTSSection *s, const uint8_t *packet)
